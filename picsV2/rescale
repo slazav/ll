@@ -1,0 +1,63 @@
+#!/bin/sh -efu
+
+tags="D S gorn lyzh pesh velo vodn sor"
+sizes="20 16"
+
+p9x7="foto gps map tup"
+
+mkdir -p $sizes 9x7
+for size in $sizes; do
+
+## create transparency mask
+#  pngtopnm "mask.png" |
+#    pamscale -xyfit $size $size > "$size/mask.pgm"
+
+  for i in $tags; do
+
+## pnmtopng does not support semi-transparent masks
+#    pngtopnm "org40x40/$i.png" |
+#      pamscale -xyfit $size $size |
+#      pnmtopng -alpha="$size/mask.pgm" > "$size/$i.png"
+
+    convert "org40x40/$i.png"\
+      mask.png  -compose CopyOpacity -composite\
+      -scale ${size}x${size}\
+      "$size/$i.png"
+  done
+
+#  rm -f "$size/mask.pgm"
+done
+
+for i in $p9x7; do
+  convert "org18x14/$i.png" -scale 9x7 "9x7/$i.png"
+done
+
+
+
+{
+  echo "<html><body bgcolor=\"wheat\">"
+
+  echo "<p>old:<br>" 
+  for i in $tags; do
+    echo "<img src=\"../picsV1/$i.png\"> "
+  done
+
+  for size in $sizes; do
+  echo "<p>new ${size}px:<br>" 
+    for i in $tags; do
+      echo "<img src=\"$size/$i.png\"> "
+    done
+  done
+
+  echo "<p>old 9x7px:<br>"
+  for i in $p9x7; do
+    echo "<img src=\"../picsV1/$i.png\"> "
+  done
+  echo "<p>new 9x7px:<br>"
+  for i in $p9x7; do
+    echo "<img src=\"9x7/$i.png\"> "
+  done
+
+
+  echo "</body></html>"
+} > test_pics.htm
