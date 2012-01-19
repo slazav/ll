@@ -3,7 +3,7 @@
 tags="D S gorn lyzh pesh velo vodn sor"
 sizes="20 16"
 
-p9x7="foto gps map tup"
+p9x7="foto gps link map tup"
 
 mkdir -p $sizes 9x7
 for size in $sizes; do
