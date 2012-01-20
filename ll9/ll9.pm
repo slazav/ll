@@ -35,9 +35,18 @@ sub read_entry{
   $data->{id} = $entry;
   return $data;
 }
+### print YAML/JSON/HTML
+sub print_entry{
+  my $fmt=shift;
+  my $data=read_entry(@_);
+  if    ($fmt eq 'yaml') { print YAML::Tiny::Dump($data);}
+  elsif ($fmt eq 'json') { print encode_json($data); }
+  elsif ($fmt eq 'html') { html_entry($data); }
+  else {print "Unsupported format\n";}
+}
 
-### read a group of entries
-sub read_group{
+### read group index
+sub read_group_idx{
   my $group = $_[0];
   $group=~s/[^a-z0-9_-]//g;
   my $data;
@@ -45,16 +54,43 @@ sub read_group{
   while (my $f = readdir INDIR){
     next if ($f =~ /^\./);
     $f=~/^([0-9]+)/;
-    my $entry = $1;
-    push @{$data}, read_entry($group, $entry);
+    push @{$data}, $1;
   }
   closedir INDIR;
   return $data;
 }
+### print YAML/JSON/TEXT
+sub print_group_idx{
+  my $fmt=shift;
+  my $data=read_group_idx(@_);
+  if    ($fmt eq 'yaml') { print YAML::Tiny::Dump($data);}
+  elsif ($fmt eq 'json') { print encode_json($data); }
+  elsif ($fmt eq 'text') { print join "\n", @{$data}; }
+  else {print "Unsupported format\n";}
+}
+
+### read a group of entries
+sub read_group{
+  my $group = $_[0];
+  my $data;
+  foreach (@{read_group_idx($group)}){
+    push @{$data}, read_entry($group, $_);
+  }
+  return [sort {$b->{date} cmp $a->{date}} @{$data}];
+}
+### print YAML/JSON/HTML
+sub print_group{
+  my $fmt=shift;
+  my $data=read_group(@_);
+  if    ($fmt eq 'yaml') { print YAML::Tiny::Dump($data);}
+  elsif ($fmt eq 'json') { print encode_json($data); }
+  elsif ($fmt eq 'html') { html_group($data); }
+  else {print "Unsupported format\n";}
+}
 
 ### read tags (with caching)
 my $tags; # cache
-sub read_tags{
+sub get_tags{
   return $tags if $tags;
   open T, $tagfile or return [];
   foreach(<T>){
@@ -70,36 +106,45 @@ sub read_tags{
   close T;
   return $tags;
 }
-
-### YAML, JSON entries
-sub yaml_entry{ print YAML::Tiny::Dump(read_entry(@_)); }
-sub json_entry{ print encode_json(read_entry(@_)); }
-
-sub yaml_tags{ print YAML::Tiny::Dump(read_tags()); }
-sub json_tags{ print encode_json(read_tags()); }
-sub text_tags{
-  foreach (@{read_tags()}){
-    print $_->{name}."\t".$_->{text}."\t".$_->{image}.($_->{br}?"\n\n":"\n");
+### print YAML/JSON/TEXT
+sub print_tags{
+  my $fmt=shift;
+  my $data=get_tags(@_);
+  if    ($fmt eq 'yaml') { print YAML::Tiny::Dump($data);}
+  elsif ($fmt eq 'json') { print encode_json($data); }
+  elsif ($fmt eq 'text') {
+    foreach (@{$data}){
+      print $_->{name}."\t".$_->{text}."\t".$_->{image}.($_->{br}?"\n\n":"\n");
+    }
   }
+  else {print "Unsupported format\n";}
 }
 
-sub yaml_groups{ print YAML::Tiny::Dump($groups); }
-sub json_groups{ print encode_json($groups); }
-sub text_groups{ print join "\n", @{$groups}; }
-
+### group list
+sub get_groups{ return $groups; }
 sub default_group{ return @{$groups}[0]; }
+### print YAML/JSON/TEXT
+sub print_groups{
+  my $fmt=shift;
+  my $data=$groups;
+  if    ($fmt eq 'yaml') { print YAML::Tiny::Dump($data);}
+  elsif ($fmt eq 'json') { print encode_json($data); }
+  elsif ($fmt eq 'text') { print join "\n", @{$data}; }
+  else {print "Unsupported format\n";}
+}
 
+##################################
 
-### HTML entry
+### print entry in HTML
 sub html_entry{
   my $group=$_[0];
   my $entry=$_[1];
+  $entry=~s/[^0-9]//g;
+  $group=~s/[^a-z0-9_-]//g;
   my $gr = $_[2] || 0; # "group" style
   my $an = $_[3] || 1; # "anonimous" style
 
   my $e = read_entry($group, $entry);
-
-  my $tags = read_tags();
 
   my $r_scr = "$showscr?g=$group&e=$entry";
   my $e_scr = "$editscr?g=$group&e=$entry";
@@ -115,7 +160,7 @@ sub html_entry{
   my $txt_tags = '';
   my $img_tags = '';
   foreach my $etag (@{$e->{tags}}){
-    foreach my $tag (@{$tags}){
+    foreach my $tag (@{get_tags()}){
       if ($etag eq $tag->{name}){
         $txt_tags .= ($txt_tags?'':', ') . $tag->{text};
         if ($tag->{image} ne '') {
@@ -159,6 +204,15 @@ sub html_entry{
 #  if ($entry!=0){
 #    print "<p><font size=\"-1\">Метки: <b>$txt_tags</b></font>\n";
 #  }
+}
+
+### print group in HTML
+sub html_group{
+  my $group=$_[0];
+  my $an = $_[1] || 1; # "anonimous" style
+  foreach (@{read_group_idx($group)}){
+    html_entry($group, $_, 1, $an);
+  }
 }
 
 
