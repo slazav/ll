@@ -87,6 +87,8 @@ sub yaml_groups{ print YAML::Tiny::Dump($groups); }
 sub json_groups{ print encode_json($groups); }
 sub text_groups{ print join "\n", @{$groups}; }
 
+sub default_group{ return @{$groups}[0]; }
+
 
 ### HTML entry
 sub html_entry{
